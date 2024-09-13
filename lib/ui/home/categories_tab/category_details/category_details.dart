@@ -1,31 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:news_app_c11_friday/api_manager/api_manager.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:news_app_c11_friday/api_manager/model/sources_response/Source.dart';
+import 'package:news_app_c11_friday/ui/home/categories_tab/category_details/category_details_viewModel.dart';
+import 'package:news_app_c11_friday/ui/home/categories_tab/category_details/source_tabs.dart';
 import 'package:news_app_c11_friday/ui/home/categories_tab/category_item.dart';
 
-class CategoryDetails extends StatelessWidget {
+class CategoryDetails extends StatefulWidget {
   CategoryItem catItem;
 
   CategoryDetails({required this.catItem});
 
   @override
+  State<CategoryDetails> createState() => _CategoryDetailsState();
+}
+
+class _CategoryDetailsState extends State<CategoryDetails> {
+  late CategoryDetailsViewModel viewModel;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    viewModel = CategoryDetailsViewModel();
+    viewModel.getSources(widget.catItem.categoryId);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: ApiManager.getSources(catItem.categoryId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
+    return BlocBuilder<CategoryDetailsViewModel, CategoryDetailsState>(
+      bloc: viewModel,
+      builder: (context, state) {
+        switch (state) {
+          case LoadingState():
+            {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+          case ErrorState():
+            {
+              return Center(
+                child: Text(state.errorMessage ?? ''),
+              );
+            }
+          case SuccessState():
+            {
+              List<Source> sourcesList = state.sourcesList ?? [];
+              return SourceTabs(sourcesList: sourcesList);
+            }
         }
-        if (snapshot.data?.status == 'error' || snapshot.hasError) {
-          return Center(
-              child: Text(snapshot.data?.message ?? snapshot.error.toString()));
-        }
-        var sourcesList = snapshot.data?.sources ?? [];
-        return ListView.builder(
-          itemBuilder: (context, index) => Text(sourcesList[index]!.name!),
-          itemCount: sourcesList.length,
-        );
       },
     );
   }
